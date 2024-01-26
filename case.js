@@ -75,27 +75,42 @@ module.exports = (griz) => {
                         reply('Bot Bukan admin!');
                     });
                 break;
-
+case 'updatelist':
+    case '\."updatelist':
+        reply("Gunakan dengan cara .updatelist namaitem|namaproduk")
+        break
                 case 'help':
                     case '\.help':
                      case 'menu':
                         case '\.menu':
-reply(`*Awikwok Bot*
+reply(`*▣───「 Musanto Chan 」───▣*
+
 Bot store yang terinsipirasi dari bot wangsaf
+Untuk menampilkan list produk atau apalah
 
-- .addlist
-- .dellist
-- .setbot
-- bot
-- list
-- .open
-- .close
-- .setwelcome
-- .setleft
-- proses
-- done
+–  A D M I N
 
-Menunggu Update? join @penyukaberuang`)
+┌  ◦  .setwelcome
+│  ◦  .setleft
+│  ◦  .ban
+│  ◦  .unban
+│  ◦  .open
+│  ◦  .linkgc
+│  ◦  .desc
+└  ◦  .setbot
+
+
+–  S T O R E
+
+┌  ◦  .list
+│  ◦  .addlist
+│  ◦  .updatelist
+│  ◦  .dellist
+│  ◦  .setproses
+│  ◦  .setdone
+│  ◦  .proses
+└  ◦  .done
+`)
                         break
 
 case 'proses':

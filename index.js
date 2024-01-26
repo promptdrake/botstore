@@ -37,7 +37,7 @@ bot.on('photo', async (msg) => {
   const chatId = msg.chat.id;
   const caption = msg.caption || '';
   if (caption.startsWith('.addlist')) {
-      const params = caption.substring('/addlist'.length).split('|');
+      const params = caption.substring('.addlist'.length).split('|');
       const nama = params[0] ? params[0].trim() : null;
       const info = params[1] ? params[1].trim() : null;
 
@@ -46,16 +46,16 @@ bot.on('photo', async (msg) => {
 
       if (!isAdmin) return bot.sendMessage(chatId, mess.notadmin);
       if (!nama || !info) return bot.sendMessage(chatId, `Gunakan dengan cara /addlist namaproduk|info produk`);
+    
+      const isavail = isAvaibleList(chatId, nama);
+      if (isavail) return bot.sendMessage(chatId, `Produk *${nama}* tidak di data chat ini!`, { parse_mode: "Markdown" });
+
       const photoLength = msg.photo.length;
       let storagee
       const fileid = msg.photo[Math.max(photoLength - 1, 0)].file_id;
         await bot.downloadFile(fileid, "./temp").then((y) => {
 storagee = y
         })
-      const isavail = isAvaibleList(chatId, nama);
-     
-
-      if (isavail) return bot.sendMessage(chatId, `Produk *${nama}* Telah ada di data chat ini!`, { parse_mode: "Markdown" });
       try {
         const imageUrl = await TelegraPh(storagee);
         savedatalist(chatId, nama, info, imageUrl);
@@ -69,10 +69,44 @@ storagee = y
     }
 
   }
+  else if (caption.startsWith('.updatelist')) {
+    const params = caption.substring('.updatelist'.length).split('|');
+    const nama = params[0] ? params[0].trim() : null;
+    const info = params[1] ? params[1].trim() : null;
+
+    const chatMember = await bot.getChatMember(chatId, msg.from.id);
+    const isAdmin = (chatMember.status === 'administrator' || chatMember.status === 'creator' || chatMember.status === 'Admin');
+
+    if (!isAdmin) return bot.sendMessage(chatId, mess.notadmin);
+    if (!nama || !info) return bot.sendMessage(chatId, `Gunakan dengan cara .updatelist namaproduk|info produk`);
+
+    const isavail = isAvaibleList(chatId, nama);
+    if (!isavail) return bot.sendMessage(chatId, `Produk *${nama}* tidak di data chat ini!`, { parse_mode: "Markdown" });
+
+    const photoLength = msg.photo.length;
+    let storagee
+    const fileid = msg.photo[Math.max(photoLength - 1, 0)].file_id;
+      await bot.downloadFile(fileid, "./temp").then((y) => {
+storagee = y
+      })
+
+    try {
+      const imageUrl = await TelegraPh(storagee);
+      updateDataList(chatId, nama, info, imageUrl);
+
+      bot.sendMessage(chatId, `Berhasil mengupdate *${nama}* kedalam list produk`, { parse_mode: "Markdown" });
+  } catch (error) {
+      console.error('Error:', error.message);
+      bot.sendMessage(chatId, 'Error uploading image. Please try again.');
+  } finally {
+      fs.unlinkSync(storagee);
+  }
+
+}
 });
 /*
 Secret bot feature
-
+menfess jika anu bersama anu
 
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
@@ -141,33 +175,35 @@ function loadUserList() {
 }
 
 bot.on('message', (msg) => {
-const chatId = msg.chat.id
-    const nama = msg.text;
-    let listData;
-    try {
-      const rawData = fs.readFileSync('./database/list.json');
-      listData = JSON.parse(rawData);
-    } catch (error) {
-      console.error('Error reading the JSON file:', error.message);
-      return;
+  const chatId = msg.chat.id
+      
+      if(!msg.photo){
+        const nama = msg.text.toLowerCase()
+      let listData;
+      try {
+        const rawData = fs.readFileSync('./database/list.json');
+        listData = JSON.parse(rawData);
+      } catch (error) {
+        console.error('Error reading the JSON file:', error.message);
+        return;
+      }
+      const entry = listData.find(item => item.chatId === chatId && item.nama === nama)
+      if (entry) {
+        if (entry.image) {
+          bot.sendPhoto(chatId, entry.image, { caption: entry.list, parse_mode: "Markdown",reply_to_message_id: msg.message_id }).catch((error) => {
+            bot.sendPhoto(chatId, entry.image, { caption: entry.list,reply_to_message_id: msg.message_id })
+            
+          })
+      } else {
+          bot.sendMessage(chatId, entry.list, { parse_mode: "Markdown",reply_to_message_id: msg.message_id }).catch((error) => {
+            bot.sendMessage(chatId, entry.list, { reply_to_message_id: msg.message_id })
+          })
+      }
+      } else {
+      return false;
+      }
     }
-    const entry = listData.find(item => item.chatId === chatId && item.nama === nama);
-    if (entry) {
-      if (entry.image) {
-        bot.sendPhoto(chatId, entry.image, { caption: entry.list, parse_mode: "Markdown",reply_to_message_id: msg.message_id }).catch((error) => {
-          bot.sendPhoto(chatId, entry.image, { caption: entry.list,reply_to_message_id: msg.message_id })
-          
-        })
-    } else {
-        bot.sendMessage(chatId, entry.list, { parse_mode: "Markdown",reply_to_message_id: msg.message_id }).catch((error) => {
-          bot.sendMessage(chatId, entry.list, { reply_to_message_id: msg.message_id })
-        })
-    }
-    } else {
-    return false;
-    }
-
-});
+  });
 bot.on('message', (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -237,6 +273,48 @@ bot.on('message', (msg) => {
         .catch(error => {
          if(error.message.includes("remove chat owner")){
           bot.sendMessage(chatId, 'Maaf! Kamu tidak dapat mengeluarkan admin');
+         }
+        else{
+          bot.sendMessage(chatId, 'Sesuatu error telah terjadi!');
+        }
+        });
+    } else {
+      bot.sendMessage(chatId, `User dengan detail ${usernameToKick} tidak terdaftar dengan bot, setidaknya biarkan user membuat chat!`);
+    }
+  });
+  bot.onText(/\.unban (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const usernameToKick = match[1];
+  
+    let userList = [];
+    const chatMember = await bot.getChatMember(chatId, msg.from.id);
+    const isAdmin = (chatMember.status === 'administrator' || chatMember.status === 'creator' || chatMember.status === 'Admin');
+    if(!isAdmin) return   bot.sendMessage(chatId, mess.notadmin);
+  
+    try {
+      const data = fs.readFileSync('userlist.json', 'utf8');
+      userList = JSON.parse(data);
+    } catch (err) {
+      console.error('Error reading user list:', err);
+    }
+  
+    const userToKick = userList.find(user => {
+      if (usernameToKick.startsWith('@')) {
+        return user.username === usernameToKick;
+      } else {
+        return user.id.toString() === usernameToKick;
+      }
+    });
+  
+    if (userToKick) {
+      const userIdToKick = userToKick.id;
+      bot.unbanChatMember(chatId, userIdToKick)
+        .then(() => {
+          bot.sendMessage(chatId, `Berhasil Mengunbanned ${userToKick.username} Dari grub.`);
+        })
+        .catch(error => {
+         if(error.message.includes("remove chat owner")){
+          bot.sendMessage(chatId, 'broken pipe');
          }
         else{
           bot.sendMessage(chatId, 'Sesuatu error telah terjadi!');
@@ -368,7 +446,23 @@ if(!isAdmin) return   bot.sendMessage(chatId, mess.notadmin);
     bot.sendMessage(chatId, `Produk dengan nama *${nameToDelete}* Tidak tersedia di chat ini.`, {parse_mode: "Markdown"});
   }
 });
-
+bot.onText(/\.updatelist ([\s\S]+)/, async(msg, match) => {
+  const chatId = msg.chat.id
+  const params = match[1].split('|');
+  const nama = params[0] ? params[0].trim() : null;
+      const info = params[1] ? params[1].trim() : null;
+  const chatMember = await bot.getChatMember(chatId, msg.from.id);
+  const isAdmin = (chatMember.status === 'administrator' || chatMember.status === 'creator' || chatMember.status === 'Admin');
+  if(!isAdmin) return   bot.sendMessage(chatId, mess.notadmin);
+  if(!nama || !info) return bot.sendMessage(chatId, `Gunakan dengan cara .updatelist namaproduk|info produk`)
+  const isavail = isAvaibleList(chatId, nama)
+  
+  if(!isavail) return bot.sendMessage(chatId, `Produk *${nama}* Tidak ada dalam database`, {parse_mode: "Markdown"});
+  const image = ""
+  updateDataList(chatId, nama, info, image);
+      bot.sendMessage(chatId, `Berhasil mengupdate *${nama}* kedalam list produk`, {parse_mode: "Markdown"});
+  
+  })
 bot.onText(/\.addlist ([\s\S]+)/, async(msg, match) => {
 const chatId = msg.chat.id
 const params = match[1].split('|');
@@ -386,6 +480,7 @@ savedatalist(chatId, nama, info, image);
     bot.sendMessage(chatId, `Berhasil menambahkan *${nama}* kedalam list produk`, {parse_mode: "Markdown"});
 
 })
+
 function TelegraPh (Path) {
 	return new Promise (async (resolve, reject) => {
 		if (!fs.existsSync(Path)) return reject(new Error("File not Found"))
@@ -405,6 +500,29 @@ function TelegraPh (Path) {
 			return reject(new Error(String(err)))
 		}
 	})
+}
+function updateDataList(chatId, nama, list, image) {
+  const filePath = './database/list.json';
+  let existingData = [];
+
+  try {
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      existingData = JSON.parse(fileContent);
+      if (!Array.isArray(existingData)) {
+          existingData = [];
+      }
+  } catch (error) {
+      console.log(error);
+  }
+  const index = existingData.findIndex(entry => entry.nama === nama);
+
+  if (index !== -1) {
+      existingData[index] = { chatId, nama, list, image };
+  } else {
+      existingData.push({ chatId, nama, list, image });
+  }
+
+  fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), 'utf8');
 }
 /*
 experimen jirrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
