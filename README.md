@@ -20,3 +20,6 @@ $ node .
 ```
 
 - If you run on Pterodactyl panel just make it with **Nodejs EGG** and upload all file on this repository to panel
+
+### Note
+gw males bikin readme
